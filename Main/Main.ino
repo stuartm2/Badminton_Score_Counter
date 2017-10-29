@@ -1,37 +1,27 @@
 
-#include <Wire.h>
-#include <RFM69.h>
-#include <SPI.h>
+#include <ChainableLED.h>
+#include <TM1637Display.h>
 #include "pitches.h"
 
-// Addresses for this node. CHANGE THESE FOR EACH NODE!
+#define NUM_LEDS 2
 
-#define NETWORKID     0   // Must be the same for all nodes
-#define MYNODEID      3   // My node ID
+#define LED_CLK_PIN 8
+#define LED_DATA_PIN 9
+ChainableLED leds(LED_CLK_PIN, LED_DATA_PIN, NUM_LEDS);
 
-// RFM69 frequency, uncomment the frequency of your module:
-
-#define FREQUENCY   RF69_433MHZ
-//#define FREQUENCY     RF69_915MHZ
-
-// Create a library object for our RFM69HCW module:
-
-RFM69 radio;
+#define CLK 3//pins definitions for TM1637 and can be changed to other ports    
+#define DIO 4
+TM1637Display display(CLK, DIO);
 
 
 #define BUTTON_DEBOUNCE_DELAY 50  // ms
 
-#define RESET_PIN 9
+#define RESET_PIN 7
 #define BUZZER_PIN 6
-#define GRN_INCDEC_PIN A0
-#define RED_INCDEC_PIN A1
-
-#define GRN_SET1_PIN 8
-#define GRN_SET2_PIN 7
-#define GRN_SET3_PIN 5
-#define RED_SET1_PIN 4
-#define RED_SET2_PIN A2
-#define RED_SET3_PIN A3
+#define GRN_INC_PIN A0
+#define GRN_DEC_PIN A1
+#define RED_INC_PIN A2
+#define RED_DEC_PIN A3
 
 #define NO_TEAM 0
 #define GRN_TEAM 1
@@ -48,8 +38,10 @@ bool teamWonGame = false;
 long idLastPressed = 0;
 long rstLastPressed = 0;
 long scoresLastSent = 0;
-bool grnIncDecBtnState = false;
-bool redIncDecBtnState = false;
+bool grnIncBtnState = false;
+bool grnDecBtnState = false;
+bool redIncBtnState = false;
+bool redDecBtnState = false;
 bool resetBtnState = false;
 
 int flashDuration = 250;
@@ -175,28 +167,21 @@ void doTune() {
 void setup() {
   Serial.begin(115200);
   
-  pinMode(GRN_INCDEC_PIN, INPUT);
-  pinMode(RED_INCDEC_PIN, INPUT);
-
-  pinMode(GRN_SET1_PIN, OUTPUT);
-  pinMode(GRN_SET2_PIN, OUTPUT);
-  pinMode(GRN_SET3_PIN, OUTPUT);
-  pinMode(RED_SET1_PIN, OUTPUT);
-  pinMode(RED_SET2_PIN, OUTPUT);
-  pinMode(RED_SET3_PIN, OUTPUT);
+  pinMode(GRN_INC_PIN, INPUT);
+  pinMode(GRN_DEC_PIN, INPUT);
+  pinMode(RED_INC_PIN, INPUT);
+  pinMode(RED_DEC_PIN, INPUT);
 
   pinMode(RESET_PIN, INPUT_PULLUP);
   pinMode(BUZZER_PIN, OUTPUT);
   
-  Wire.begin(8);
-
-  // Initialize the RFM69HCW:
-  radio.initialize(FREQUENCY, MYNODEID, NETWORKID);
-  radio.setHighPower(true); // Always use this for RFM69HCW
+  leds.init();
+  
+  display.setBrightness(0x0f);
 }
 
 void loop() {
-  radioReceive();
+  //radioReceive();
   detectIncrDecrBtnPresses();
   detectResetBtnPresses();
   updateScores();
@@ -205,7 +190,7 @@ void loop() {
   sendScores();
 }
 
-void radioReceive() {
+/*void radioReceive() {
   // RECEIVING
 
   // In this section, we'll check with the RFM69HCW to see
@@ -241,21 +226,30 @@ void radioReceive() {
       redScore += 1;
     }
   }
-}
+}*/
 
 void sendScores() {
   long timeNow = millis();
 
   if (timeNow > scoresLastSent + 50) {
-    Wire.beginTransmission(8);
-
-    if (sendGrnScore) {
-      Wire.write(grnScore);
-    } else {
-      Wire.write(redScore + 31);
+    uint8_t data[] = {
+      display.encodeDigit(grnScore / 10),
+      display.encodeDigit(grnScore % 10),
+      display.encodeDigit(redScore / 10),
+      display.encodeDigit(redScore % 10)
+    };
+  
+    if (data[0] == display.encodeDigit(0)) {
+      data[0] = 0x00;
     }
     
-    Wire.endTransmission();
+    if (data[2] == display.encodeDigit(0)) {
+      data[2] = 0x00;
+    }
+    
+    data[1] = 0b10000000 | data[1];
+    display.setSegments(data);
+    
     sendGrnScore = !sendGrnScore;
     scoresLastSent = timeNow;
   }
@@ -269,34 +263,48 @@ void detectIncrDecrBtnPresses() {
   long timeNow = millis();
   
   if (timeNow > idLastPressed + BUTTON_DEBOUNCE_DELAY) {
-    // Handle green increment press
-    int grnBtnVal = analogRead(GRN_INCDEC_PIN);
+    // Handle green button presses
+    bool grnIncBtnPressed = digitalRead(GRN_INC_PIN) == LOW;
+    bool grnDecBtnPressed = digitalRead(GRN_DEC_PIN) == LOW;
     
-    if (grnBtnVal >= 750 && !grnIncDecBtnState) {
-      grnIncDecBtnState = true;
+    if (grnIncBtnPressed && !grnIncBtnState) {
+      grnIncBtnState = true;
       grnScore += 1;
       startTune(1);
-    } else if (grnBtnVal <= 250 && !grnIncDecBtnState && grnScore > 0) {
-      grnIncDecBtnState = true;
+    } else if (grnDecBtnPressed && !grnDecBtnState && grnScore > 0) {
+      grnDecBtnState = true;
       grnScore -= 1;
       startTune(2);
-    } else if (grnBtnVal > 250 && grnBtnVal < 750) {
-      grnIncDecBtnState = false;
+    }
+    
+    if (!grnIncBtnPressed) {
+      grnIncBtnState = false;
     }
 
-    // Handle red increment press
-    int redBtnVal = analogRead(RED_INCDEC_PIN);
+    if (!grnDecBtnPressed) {
+      grnDecBtnState = false;
+    }
+
+    // Handle red button presses
+    bool redIncBtnPressed = digitalRead(RED_INC_PIN) == LOW;
+    bool redDecBtnPressed = digitalRead(RED_DEC_PIN) == LOW;
     
-    if (redBtnVal >= 750 && !redIncDecBtnState) {
-      redIncDecBtnState = true;
+    if (redIncBtnPressed && !redIncBtnState) {
+      redIncBtnState = true;
       redScore += 1;
       startTune(1);
-    } else if (redBtnVal <= 250 && !redIncDecBtnState && redScore > 0) {
-      redIncDecBtnState = true;
+    } else if (redDecBtnPressed && !redDecBtnState && redScore > 0) {
+      redDecBtnState = true;
       redScore -= 1;
       startTune(2);
-    } else if (redBtnVal > 250 && redBtnVal < 750) {
-      redIncDecBtnState = false;
+    }
+    
+    if (!redIncBtnPressed) {
+      redIncBtnState = false;
+    }
+
+    if (!redDecBtnPressed) {
+      redDecBtnState = false;
     }
 
     idLastPressed = timeNow;
@@ -363,6 +371,18 @@ bool greensWin() {
   }
 }
 
+bool greensWinGame() {
+  int wins = 0;
+  
+  for (int i = 0; i < 3; i++) {
+    if (setWins[i] == GRN_TEAM) {
+      wins++;
+    }
+  }
+
+  return wins > 1;
+}
+
 bool redsWin() {
   if (redScore == 30 ||
       (redScore >= 21 && (grnScore + 1) < redScore)) {
@@ -372,35 +392,60 @@ bool redsWin() {
   }
 }
 
+bool redsWinGame() {
+  int wins = 0;
+  
+  for (int i = 0; i < 3; i++) {
+    if (setWins[i] == RED_TEAM) {
+      wins++;
+    }
+  }
+
+  return wins > 1;
+}
+
 void showSets() {
   long timeNow = millis();
   bool grn1State = (setWins[0] == GRN_TEAM);
   bool grn2State = (setWins[1] == GRN_TEAM);
-  bool grn3State = (setWins[2] == GRN_TEAM);
   bool red1State = (setWins[0] == RED_TEAM);
   bool red2State = (setWins[1] == RED_TEAM);
-  bool red3State = (setWins[2] == RED_TEAM);
 
   if (timeNow > lastFlashed + flashDuration) {
     flashState = !flashState;
     lastFlashed = timeNow;
   }
   
-  if (teamWonGame || teamWonSet) {
+  if (teamWonGame) {
+    bool grnWin = greensWinGame();
+    bool redWin = redsWinGame();
+    
+    grn1State = grnWin && flashState;
+    grn2State = grnWin && flashState;
+    red1State = redWin && flashState;
+    red2State = redWin && flashState;
+  } else if (teamWonSet) {
     // Flash all
     grn1State = grn1State && flashState;
     grn2State = grn2State && flashState;
-    grn3State = grn3State && flashState;
     red1State = red1State && flashState;
     red2State = red2State && flashState;
-    red3State = red3State && flashState;
   }
-  
-  digitalWrite(GRN_SET1_PIN, grn1State);
-  digitalWrite(GRN_SET2_PIN, grn2State);
-  digitalWrite(GRN_SET3_PIN, grn3State);
-  digitalWrite(RED_SET1_PIN, red1State);
-  digitalWrite(RED_SET2_PIN, red2State);
-  digitalWrite(RED_SET3_PIN, red3State);
+
+  if (grn1State) {
+    leds.setColorRGB(0, 0, 255, 0);
+  } else if (red1State) {
+    leds.setColorRGB(0, 255, 0, 0);
+  } else {
+    leds.setColorRGB(0, 0, 0, 0);
+  }
+
+  if (grn2State) {
+    leds.setColorRGB(1, 0, 255, 0);
+  } else if (red2State) {
+    leds.setColorRGB(1, 255, 0, 0);
+  } else {
+    leds.setColorRGB(1, 0, 0, 0);
+  }
 }
 
