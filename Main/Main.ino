@@ -18,8 +18,8 @@ TM1637Display display(CLK, DIO);
 
 #define RESET_PIN 7
 #define BUZZER_PIN 6
-#define GRN_INC_PIN A0
-#define GRN_DEC_PIN A1
+#define GRN_INC_PIN A1
+#define GRN_DEC_PIN A0
 #define RED_INC_PIN A2
 #define RED_DEC_PIN A3
 
