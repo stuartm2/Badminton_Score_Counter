@@ -18,8 +18,6 @@
 RFM69 radio;
 
 
-
-
 #define BTN_PIN 3
 #define BUTTON_DEBOUNCE_DELAY 100  // ms
 
@@ -30,11 +28,14 @@ void setup() {
   Serial.begin(115200);
   pinMode(BTN_PIN, INPUT_PULLUP);
 
+  pinMode(4, OUTPUT);
+  digitalWrite(4, LOW);
+
   Serial.println("@");
   
   // Initialize the RFM69HCW:
   radio.initialize(FREQUENCY, MYNODEID, NETWORKID);
-  radio.setHighPower(true); // Always use this for RFM69HCW
+  //radio.setHighPower(true); // Always use this for RFM69HCW
   
   Serial.println("*");
 }
@@ -44,9 +45,11 @@ void loop() {
   
   if (timeNow > lastPressed + BUTTON_DEBOUNCE_DELAY) {
     if (digitalRead(BTN_PIN) == LOW && !btnState) {
+      digitalWrite(4, HIGH);
       btnState = true;
       sendData();
     } else if (digitalRead(BTN_PIN) == HIGH) {
+      digitalWrite(4, LOW);
       btnState = false;
     }
 
