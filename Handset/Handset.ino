@@ -1,4 +1,5 @@
 
+#include <LowPower.h>
 #include <RFM69.h>
 #include <SPI.h>
 
@@ -19,42 +20,40 @@ RFM69 radio;
 
 
 #define BTN_PIN 3
-#define BUTTON_DEBOUNCE_DELAY 100  // ms
+#define LED_PIN 9
+#define BTN_DELAY 250  // ms
 
-long lastPressed = 0;
-bool btnState = false;
+void wakeUp() {} // A handler for the pin interrupt.
 
 void setup() {
-  Serial.begin(115200);
   pinMode(BTN_PIN, INPUT_PULLUP);
-
-  pinMode(4, OUTPUT);
-  digitalWrite(4, LOW);
-
-  Serial.println("@");
+  pinMode(LED_PIN, OUTPUT);
   
+  digitalWrite(LED_PIN, LOW);
+
   // Initialize the RFM69HCW:
   radio.initialize(FREQUENCY, MYNODEID, NETWORKID);
-  //radio.setHighPower(true); // Always use this for RFM69HCW
-  
-  Serial.println("*");
 }
 
 void loop() {
-  long timeNow = millis();
+  // Allow wake up pin to trigger interrupt on low.
+  attachInterrupt(1, wakeUp, LOW);
   
-  if (timeNow > lastPressed + BUTTON_DEBOUNCE_DELAY) {
-    if (digitalRead(BTN_PIN) == LOW && !btnState) {
-      digitalWrite(4, HIGH);
-      btnState = true;
-      sendData();
-    } else if (digitalRead(BTN_PIN) == HIGH) {
-      digitalWrite(4, LOW);
-      btnState = false;
-    }
+  // Enter power down state with ADC and BOD module disabled.
+  // Wake up when wake up pin is low.
+  LowPower.powerDown(SLEEP_FOREVER, ADC_OFF, BOD_OFF); 
+  
+  // Disable external pin interrupt on wake up pin.
+  detachInterrupt(1);
 
-    lastPressed = timeNow;
-  }
+  // Do something here
+  sendData();
+  digitalWrite(LED_PIN, HIGH);
+  delay(BTN_DELAY);
+  digitalWrite(LED_PIN, LOW);
+
+  // Sleep for 8 seconds
+  LowPower.powerDown(SLEEP_4S, ADC_OFF, BOD_OFF); 
 }
 
 void sendData() {
@@ -62,10 +61,6 @@ void sendData() {
 
   static char sendBuffer[62];
   static int sendLength = 0;
-
-  Serial.print("sending to node ");
-  Serial.print(TONODEID, DEC);
-  Serial.println(" >> Test");
 
   // There are two ways to send packets. If you want
   // acknowledgements, use sendWithRetry():
