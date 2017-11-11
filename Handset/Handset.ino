@@ -6,7 +6,6 @@
 // Addresses for this node. CHANGE THESE FOR EACH NODE!
 
 #define NETWORKID     0   // Must be the same for all nodes
-#define MYNODEID      1   // My node ID
 #define TONODEID      3   // Destination node ID
 
 // RFM69 frequency, uncomment the frequency of your module:
@@ -20,19 +19,27 @@ RFM69 radio;
 
 
 #define BTN_PIN 3
+#define NODE_PIN 4
 #define LED_PIN 9
 #define BTN_DELAY 250  // ms
 
 void wakeUp() {} // A handler for the pin interrupt.
 
 void setup() {
+  int myNodeId = 1;
+  
   pinMode(BTN_PIN, INPUT_PULLUP);
+  pinMode(NODE_PIN, INPUT_PULLUP);
   pinMode(LED_PIN, OUTPUT);
   
   digitalWrite(LED_PIN, LOW);
 
+  if (digitalRead(NODE_PIN) == LOW) {
+    myNodeId = 2;
+  }
+
   // Initialize the RFM69HCW:
-  radio.initialize(FREQUENCY, MYNODEID, NETWORKID);
+  radio.initialize(FREQUENCY, myNodeId, NETWORKID);
 }
 
 void loop() {
