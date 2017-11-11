@@ -1,7 +1,17 @@
 
 #include <ChainableLED.h>
+#include <RFM69.h>
+#include <SPI.h>
 #include <TM1637Display.h>
 #include "pitches.h"
+
+// Radio configuration
+#define NETWORKID     0   // Must be the same for all nodes
+#define MYNODEID      3
+#define FREQUENCY   RF69_433MHZ
+
+RFM69 radio;
+
 
 #define NUM_LEDS 2
 
@@ -166,7 +176,7 @@ void doTune() {
 
 void setup() {
   Serial.begin(115200);
-  
+
   pinMode(GRN_INC_PIN, INPUT);
   pinMode(GRN_DEC_PIN, INPUT);
   pinMode(RED_INC_PIN, INPUT);
@@ -175,13 +185,16 @@ void setup() {
   pinMode(RESET_PIN, INPUT_PULLUP);
   pinMode(BUZZER_PIN, OUTPUT);
   
+  // Initialize the RFM69HCW:
+  radio.initialize(FREQUENCY, MYNODEID, NETWORKID);
+  
   leds.init();
   
   display.setBrightness(0x0f);
 }
 
 void loop() {
-  //radioReceive();
+  radioReceive();
   detectIncrDecrBtnPresses();
   detectResetBtnPresses();
   updateScores();
@@ -190,32 +203,8 @@ void loop() {
   sendScores();
 }
 
-/*void radioReceive() {
-  // RECEIVING
-
-  // In this section, we'll check with the RFM69HCW to see
-  // if it has received any packets:
-
+void radioReceive() {
   if (radio.receiveDone()) {
-    // Print out the information:
-
-    Serial.print("received from node ");
-    Serial.print(radio.SENDERID, DEC);
-    Serial.print(", message [");
-
-    // The actual message is contained in the DATA array,
-    // and is DATALEN bytes in size:
-
-    for (byte i = 0; i < radio.DATALEN; i++) {
-      Serial.print((char)radio.DATA[i]);
-    }
-
-    // RSSI is the "Receive Signal Strength Indicator",
-    // smaller numbers mean higher power.
-
-    Serial.print("], RSSI ");
-    Serial.println(radio.RSSI);
-
     if (teamWonSet) {
       return;
     } else if (radio.SENDERID == 1) {
@@ -226,7 +215,7 @@ void loop() {
       redScore += 1;
     }
   }
-}*/
+}
 
 void sendScores() {
   long timeNow = millis();
