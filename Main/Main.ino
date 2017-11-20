@@ -66,55 +66,30 @@ long lastNoteStarted = 0;
 
 int tuneSteps[][2] = {
   {0, 12},
-  {12, 72 + 12}
+  {12, 24 + 12}
 };
 
 int winTunes[] = {
   // Game win
-  NOTE_A4, 200,
-  NOTE_B4, 200,
-  NOTE_C4, 200,
-  NOTE_D4, 200,
-  NOTE_E4, 200,
-  NOTE_F5, 600,
+  NOTE_F4, 100,
+  0, 50,
+  NOTE_D4, 100,
+  0, 50,
+  NOTE_B4, 300,
+  0, 50,
 
   // Match win
-  NOTE_G4, 400,
-  0, 150,
-  NOTE_G4, 400,
-  0, 150,
-  NOTE_G4, 400,
-  0, 150,
-  NOTE_DS4, 300,
+  NOTE_E4, 100,
   0, 50,
-  NOTE_AS4, 100,
+  NOTE_C4, 100,
   0, 50,
-  NOTE_G4, 400,
-  0, 100,
-  NOTE_DS4, 300,
+  NOTE_A4, 100,
   0, 50,
-  NOTE_AS4, 100,
+  NOTE_F4, 100,
   0, 50,
-  NOTE_G4, 600,
-  0, 300,
-  
-  NOTE_D5, 400,
-  0, 150,
-  NOTE_D5, 400,
-  0, 150,
-  NOTE_D5, 400,
-  0, 150,
-  NOTE_DS5, 300,
+  NOTE_D4, 100,
   0, 50,
-  NOTE_AS4, 100,
-  0, 50,
-  NOTE_FS4, 400,
-  0, 100,
-  NOTE_DS4, 300,
-  0, 50,
-  NOTE_AS4, 100,
-  0, 50,
-  NOTE_G4, 600,
+  NOTE_B4, 300,
   0, 50
 };
 
@@ -122,9 +97,9 @@ void startTune(int tune) {
   playingTune = false;
   
   if (tune == 1) {
-    tone(BUZZER_PIN, NOTE_F6, 300);
+    tone(BUZZER_PIN, NOTE_A4, 25);
   } else if (tune == 2) {
-    tone(BUZZER_PIN, NOTE_A4, 300);
+    tone(BUZZER_PIN, NOTE_F6, 25);
   } else if (tune == 3) {
     playingTune = true;
     tuneAt = tuneSteps[0][0];
