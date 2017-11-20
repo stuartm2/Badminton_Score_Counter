@@ -37,6 +37,8 @@ TM1637Display display(CLK, DIO);
 #define GRN_TEAM 1
 #define RED_TEAM 2
 
+#define GAME_WIN_SCORE 21
+
 
 int grnScore = 0;
 int redScore = 0;
@@ -328,7 +330,7 @@ void updateScores() {
 
 bool greensWin() {
   if (grnScore == 30 ||
-      (grnScore >= 21 && (redScore + 1) < grnScore)) {
+      (grnScore >= GAME_WIN_SCORE && (redScore + 1) < grnScore)) {
     return true;
   } else {
     return false;
@@ -349,7 +351,7 @@ bool greensWinGame() {
 
 bool redsWin() {
   if (redScore == 30 ||
-      (redScore >= 21 && (grnScore + 1) < redScore)) {
+      (redScore >= GAME_WIN_SCORE && (grnScore + 1) < redScore)) {
     return true;
   } else {
     return false;
